@@ -12,6 +12,7 @@
 @interface DownloadCell : UITableViewCell
 @property (nonatomic, strong) UILabel *nameLabel;
 @property (nonatomic, strong) UIProgressView *progressView;
+@property (nonatomic, strong) UILabel *speedLabel;
 @property (nonatomic, strong) UIButton *downLoadBtn;
 
 @property (nonatomic, strong) NSString *url;

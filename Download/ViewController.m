@@ -20,7 +20,9 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = @"下载列表";
-    
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"全部暂停" style:UIBarButtonItemStylePlain target:self action:@selector(handleAllSuspend)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"全部开始" style:UIBarButtonItemStylePlain target:self action:@selector(handleAllResume)];
+
     self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
     self.tableView.delegate = self;
     self.tableView.dataSource = self;
@@ -41,6 +43,8 @@
         ];
 }
 
+#pragma mark - UITableViewDelegate, UITableViewDataSource
+
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
     return 10;
@@ -53,6 +57,18 @@
     cell.url = self.urlArr[indexPath.row];
     cell.indexPath = indexPath;
     return cell;
+}
+
+#pragma mark - 按钮触发事件
+
+- (void)handleAllSuspend
+{
+    [[YDDownloadQueue defaultQueue] removeAllTasks];
+}
+
+- (void)handleAllResume
+{
+    [[YDDownloadQueue defaultQueue] resumeAllTasks];
 }
 
 @end

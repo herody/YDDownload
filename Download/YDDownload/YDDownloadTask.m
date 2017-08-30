@@ -18,8 +18,6 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
 @property (nonatomic, strong) NSString *directoryPath;
 @property (nonatomic, strong) NSFileHandle *fileHandle;
 
-@property (nonatomic, assign) long long expectedLength;
-@property (nonatomic, assign) long long receivedLength;
 @property (nonatomic, assign) long long accumulateLength;
 @property (nonatomic, strong) NSDate *lastDate;
            
@@ -49,22 +47,25 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
 - (instancetype)initWithUrl:(NSString *)urlStr progressHandler:(void (^)(CGFloat progress, CGFloat speed))progressHandler completionHandler:(void (^)(NSString *filePath, NSError *error))completionHandler
 {
     if (self = [self init]) {
-        //初始化参数
-        self.taskPriority = YDDownloadPriorityDefault;
-        self.taskProgress = 0;
-        self.taskSpeed = 0;
-        self.accumulateLength = 0;
-        
         //保存任务相关参数
         self.downloadUrl = urlStr;
         self.progressHandler = progressHandler;
         self.completionHandler = completionHandler;
         
-        NSString *fileName = [self getDownloadFileNameWithUrl:self.downloadUrl];
-        if (fileName) {
-            self.filePath = [self.directoryPath stringByAppendingPathComponent:fileName];
+        //获取已下载文件信息
+        NSDictionary *taskInfo = [self getTaskInfoForUrl:self.downloadUrl];
+        if (taskInfo) {
+            self.filePath = [self.directoryPath stringByAppendingPathComponent:taskInfo[@"fileName"]];
             self.receivedLength = [self getFileSizeAtPath:self.filePath];
+            self.expectedLength = [taskInfo[@"totalSize"] longLongValue];
         }
+        
+        //初始化参数
+        self.taskProgress = 0;
+        self.taskSpeed = 0;
+        self.accumulateLength = 0;
+        self.taskPriority = YDDownloadPriorityDefault;
+        self.taskStatus = YDDownloadTaskStatusWaiting;
     }
     return self;
 }
@@ -93,7 +94,9 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
 
 - (void)setTaskStatus:(YDDownloadTaskStatus)taskStatus
 {
+    //setter
     _taskStatus = taskStatus;
+    
     //发起任务状态改变的通知
     [[NSNotificationCenter defaultCenter] postNotificationName:YDDownloadTaskDidChangeStatusNotification object:self];
 }
@@ -108,19 +111,19 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
 }
 
 //保存文件名与链接的关联
-- (void)saveDownloadFileName:(NSString *)fileName withUrl:(NSString *)url
+- (void)saveTaskInfo:(NSDictionary *)taskInfo forUrl:(NSString *)url
 {
     NSString *plistPath = [self.directoryPath stringByAppendingPathComponent:@"download.plist"];
     NSMutableDictionary *plistDic = [NSMutableDictionary dictionaryWithContentsOfFile:plistPath];
     if (!plistDic) {
         plistDic = [NSMutableDictionary dictionary];
     }
-    [plistDic setObject:fileName forKey:url];
+    [plistDic setObject:taskInfo forKey:url];
     [plistDic writeToFile:plistPath atomically:YES];
 }
 
 //根据链接获取文件名
-- (NSString *)getDownloadFileNameWithUrl:(NSString *)url
+- (NSDictionary *)getTaskInfoForUrl:(NSString *)url
 {
     NSString *plistPath = [self.directoryPath stringByAppendingPathComponent:@"download.plist"];
     NSMutableDictionary *plistDic = [NSMutableDictionary dictionaryWithContentsOfFile:plistPath];
@@ -128,7 +131,7 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
 }
 
 //删除文件名与链接的关联
-- (void)deleteDownloadFileNameWithUrl:(NSString *)url
+- (void)deleteTaskInfoForUrl:(NSString *)url
 {
     NSString *plistPath = [self.directoryPath stringByAppendingPathComponent:@"download.plist"];
     NSMutableDictionary *plistDic = [NSMutableDictionary dictionaryWithContentsOfFile:plistPath];
@@ -140,22 +143,26 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
 
 - (void)startDownloadWithUrl:(NSString *)urlStr progressHandler:(void (^)(CGFloat progress, CGFloat speed))progressHandler completionHandler:(void (^)(NSString *filePath, NSError *error))completionHandler
 {
-    //初始化参数
-    self.taskProgress = 0;
-    self.taskSpeed = 0;
-    self.accumulateLength = 0;
-    self.taskPriority = YDDownloadPriorityDefault;
-
     //保存任务相关参数
     self.downloadUrl = urlStr;
     self.progressHandler = progressHandler;
     self.completionHandler = completionHandler;
     
-    NSString *fileName = [self getDownloadFileNameWithUrl:self.downloadUrl];
-    if (fileName) {
-        self.filePath = [self.directoryPath stringByAppendingPathComponent:fileName];
+    //获取已下载文件信息
+    NSDictionary *taskInfo = [self getTaskInfoForUrl:self.downloadUrl];
+    if (taskInfo) {
+        self.filePath = [self.directoryPath stringByAppendingPathComponent:taskInfo[@"fileName"]];
         self.receivedLength = [self getFileSizeAtPath:self.filePath];
+        self.expectedLength = [taskInfo[@"totalSize"] longLongValue];
     }
+    
+    //初始化参数
+    self.taskProgress = 0;
+    self.taskSpeed = 0;
+    self.accumulateLength = 0;
+    self.taskPriority = YDDownloadPriorityDefault;
+    self.taskStatus = YDDownloadTaskStatusWaiting;
+
     //开启下载任务
     [self resumeTask];
 }
@@ -164,9 +171,10 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
 - (void)suspendTask
 {
     //暂停任务
-    if (self.taskStatus != YDDownloadTaskStatusWaiting) {
+    if (self.taskStatus == YDDownloadTaskStatusRunning || self.taskStatus == YDDownloadTaskStatusFailed) {
         [self.dataTask suspend];
     }
+    
     //更改任务状态
     self.taskStatus = YDDownloadTaskStatusSuspended;
 }
@@ -177,9 +185,11 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
     //取消任务
     [self.dataTask cancel];
     self.dataTask = nil;
-    //删除文件
+    
+    //删除已下载文件及文件关联信息
     [[NSFileManager defaultManager] removeItemAtPath:self.filePath error:nil];
-    [self deleteDownloadFileNameWithUrl:self.downloadUrl];
+    [self deleteTaskInfoForUrl:self.downloadUrl];
+    
     //更改任务状态
     self.taskStatus = YDDownloadTaskStatusCanceled;
 }
@@ -189,6 +199,7 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
 {
     //更改任务状态
     self.taskStatus = YDDownloadTaskStatusRunning;
+    
     //开始/恢复任务
     if (self.taskStatus == YDDownloadTaskStatusRunning) {
         [self.dataTask resume];
@@ -205,7 +216,8 @@ didReceiveResponse:(NSURLResponse *)response
     self.filePath = [self.directoryPath stringByAppendingPathComponent:response.suggestedFilename];
     if (![[NSFileManager defaultManager] fileExistsAtPath:self.filePath]) {
         [[NSFileManager defaultManager] createFileAtPath:self.filePath contents:nil attributes:nil];
-        [self saveDownloadFileName:response.suggestedFilename withUrl:self.downloadUrl];
+        NSDictionary *taskInfo = @{@"fileName":response.suggestedFilename, @"totalSize":@(response.expectedContentLength)};
+        [self saveTaskInfo:taskInfo forUrl:self.downloadUrl];
     }
     
     //参数赋初值
@@ -257,12 +269,14 @@ didCompleteWithError:(nullable NSError *)error
     
     //删除文件名与下载链接的关联
     if (!error && self.taskProgress >= 1.0) {
-        [self deleteDownloadFileNameWithUrl:self.downloadUrl];
+        [self deleteTaskInfoForUrl:self.downloadUrl];
     }
     
     //更改任务状态
     if (error) {
-        self.taskStatus = YDDownloadTaskStatusFailed;
+        if (error.code != -999) {
+            self.taskStatus = YDDownloadTaskStatusFailed;
+        }
     } else {
         self.taskStatus = YDDownloadTaskStatusCompleted;
     }

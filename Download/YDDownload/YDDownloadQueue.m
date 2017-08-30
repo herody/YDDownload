@@ -22,7 +22,7 @@
         //参数初始化
         self.excutingTasks = [NSMutableArray array];
         self.waitingTasks = [NSMutableArray array];
-        self.maxConcurrentTaskCount = 1;
+        self.maxConcurrentTaskCount = 2;
         //添加任务状态改变通知
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(downloadTaskDidChangeStatusNotification:) name:YDDownloadTaskDidChangeStatusNotification object:nil];
     }
@@ -85,25 +85,37 @@
 //暂停全部任务
 - (void)suspendAllTasks
 {
-    for (YDDownloadTask *task in [self.excutingTasks copy]) {
-        [task suspendTask];
-    }
+    //暂停全部任务
+    NSInteger taskNum = self.excutingTasks.count;
     for (YDDownloadTask *task in [self.waitingTasks copy]) {
         [task suspendTask];
     }
+    for (YDDownloadTask *task in [self.excutingTasks copy]) {
+        [task suspendTask];
+    }
+    
+    //将下载中的任务移至等待中队列顶部
+    NSIndexSet *taskIndexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(self.waitingTasks.count - taskNum, taskNum)];
+    NSArray *tasks = [self.waitingTasks objectsAtIndexes:taskIndexes];
+    [self.waitingTasks removeObjectsAtIndexes:taskIndexes];
+    NSIndexSet *insertIndexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, taskNum)];
+    [self.waitingTasks insertObjects:tasks atIndexes:insertIndexes];
 }
 
 //移除全部任务
 - (void)removeAllTasks
 {
-    for (YDDownloadTask *task in [self.excutingTasks copy]) {
-        [task cancelTask];
-    }
+    //取消全部任务
     for (YDDownloadTask *task in [self.waitingTasks copy]) {
         [task cancelTask];
     }
-    [self.excutingTasks removeAllObjects];
+    for (YDDownloadTask *task in [self.excutingTasks copy]) {
+        [task cancelTask];
+    }
+    
+    //清空队列
     [self.waitingTasks removeAllObjects];
+    [self.excutingTasks removeAllObjects];
 }
 
 //开启/恢复全部任务
