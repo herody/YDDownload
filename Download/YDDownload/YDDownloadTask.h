@@ -52,7 +52,7 @@ typedef NS_ENUM(NSUInteger, YDDownloadPriority) {
 /**
  下载状态
  */
-@property (nonatomic, assign) YDDownloadTaskStatus taskStatus;
+@property (nonatomic, assign, readonly) YDDownloadTaskStatus taskStatus;
 
 /**
  下载任务优先级,默认为YDDownloadPriorityDefault
@@ -62,32 +62,32 @@ typedef NS_ENUM(NSUInteger, YDDownloadPriority) {
 /**
  下载链接
  */
-@property (nonatomic, strong) NSString *downloadUrl;
+@property (nonatomic, strong, readonly) NSString *downloadUrl;
 
 /**
  下载完成后的文件地址
  */
-@property (nonatomic, strong) NSString *filePath;
+@property (nonatomic, strong, readonly) NSString *filePath;
 
 /**
  下载进度
  */
-@property (nonatomic, assign) CGFloat taskProgress;
+@property (nonatomic, assign, readonly) CGFloat taskProgress;
 
 /**
  下载速度
  */
-@property (nonatomic, assign) CGFloat taskSpeed;
+@property (nonatomic, assign, readonly) CGFloat taskSpeed;
 
 /**
  文件总大小
  */
-@property (nonatomic, assign) long long expectedLength;
+@property (nonatomic, assign, readonly) long long expectedLength;
 
 /**
  已接收文件大小
  */
-@property (nonatomic, assign) long long receivedLength;
+@property (nonatomic, assign, readonly) long long receivedLength;
 
 
 /**

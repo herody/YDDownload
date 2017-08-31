@@ -92,11 +92,11 @@
             
         } completionHandler:^(NSString *filePath, NSError *error) {
             
-            NSLog(@"%@", filePath);
             self.speedLabel.text = nil;
             if (error.code == -999) {
                 self.progressView.progress = 0;
             }
+            NSLog(@"%@", filePath);
             
         }];
         
@@ -107,6 +107,7 @@
     } else if ([sender.currentTitle isEqualToString:@"暂停"] || [sender.currentTitle isEqualToString:@"等待中"]) {
         
         [self.downloadTask suspendTask];
+        self.speedLabel.text = nil;
     }
 }
 

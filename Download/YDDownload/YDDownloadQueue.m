@@ -20,9 +20,9 @@
 {
     if (self = [super init]) {
         //参数初始化
-        self.excutingTasks = [NSMutableArray array];
-        self.waitingTasks = [NSMutableArray array];
-        self.maxConcurrentTaskCount = 2;
+        _excutingTasks = [NSMutableArray array];
+        _waitingTasks = [NSMutableArray array];
+        self.maxConcurrentTaskCount = 1;
         //添加任务状态改变通知
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(downloadTaskDidChangeStatusNotification:) name:YDDownloadTaskDidChangeStatusNotification object:nil];
     }
@@ -170,7 +170,7 @@
             [self.waitingTasks removeObject:downloadTask];
         } else {
             //状态改变为等待中
-            downloadTask.taskStatus = YDDownloadTaskStatusWaiting;
+            [downloadTask setValue:@(YDDownloadTaskStatusWaiting) forKeyPath:@"taskStatus"];
         }
     }
 }

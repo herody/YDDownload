@@ -21,12 +21,12 @@
 /**
  正在执行的下载任务
  */
-@property (nonatomic, strong) NSMutableArray *excutingTasks;
+@property (nonatomic, strong, readonly) NSMutableArray *excutingTasks;
 
 /**
  正在等待中的下载任务
  */
-@property (nonatomic, strong) NSMutableArray *waitingTasks;
+@property (nonatomic, strong, readonly) NSMutableArray *waitingTasks;
 
 
 /**
