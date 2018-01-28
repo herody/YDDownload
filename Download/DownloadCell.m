@@ -3,7 +3,7 @@
 //  Download
 //
 //  Created by 侯亚迪 on 17/8/25.
-//  Copyright © 2017年 杭州魔品科技. All rights reserved.
+//  Copyright © 2017年 侯亚迪. All rights reserved.
 //
 
 #import "DownloadCell.h"
@@ -37,7 +37,7 @@
 - (UILabel *)nameLabel
 {
     if (!_nameLabel) {
-        self.nameLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 10, 30, 20)];
+        _nameLabel = [[UILabel alloc] initWithFrame:CGRectMake(15, 10, 30, 20)];
         _nameLabel.font = [UIFont systemFontOfSize:16];
     }
     return _nameLabel;
@@ -46,7 +46,7 @@
 - (UIButton *)downLoadBtn
 {
     if (!_downLoadBtn) {
-        self.downLoadBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        _downLoadBtn = [UIButton buttonWithType:UIButtonTypeSystem];
         _downLoadBtn.frame = CGRectMake([UIScreen mainScreen].bounds.size.width - 15 - 50, 10, 50, 20);
         [_downLoadBtn setTitle:@"下载" forState:UIControlStateNormal];
         [_downLoadBtn addTarget:self action:@selector(handleDownload:) forControlEvents:UIControlEventTouchUpInside];
@@ -57,7 +57,7 @@
 - (UIProgressView *)progressView
 {
     if (!_progressView) {
-        self.progressView = [[UIProgressView alloc] initWithFrame:CGRectMake(CGRectGetMaxX(_nameLabel.frame), 19, CGRectGetMinX(_downLoadBtn.frame) - CGRectGetMaxX(_nameLabel.frame) - 75, 2)];
+        _progressView = [[UIProgressView alloc] initWithFrame:CGRectMake(CGRectGetMaxX(_nameLabel.frame), 19, CGRectGetMinX(_downLoadBtn.frame) - CGRectGetMaxX(_nameLabel.frame) - 75, 2)];
         _progressView.progress = 0.0f;
     }
     return _progressView;
@@ -66,7 +66,7 @@
 - (UILabel *)speedLabel
 {
     if (!_speedLabel) {
-        self.speedLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(_progressView.frame) + 5, 10, 70, 20)];
+        _speedLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(_progressView.frame) + 5, 10, 70, 20)];
         _speedLabel.font = [UIFont systemFontOfSize:14];
         _speedLabel.textAlignment = NSTextAlignmentCenter;
     }
