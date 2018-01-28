@@ -63,7 +63,7 @@
 - (YDDownloadTask *)addDownloadTaskWithPriority:(YDDownloadPriority)priority url:(NSString *)urlStr progressHandler:(void (^)(CGFloat progress, CGFloat speed))progressHandler completionHandler:(void (^)(NSString *filePath, NSError *error))completionHandler
 {
     YDDownloadTask *downloadTask = [YDDownloadTask downloadTaskWithUrl:urlStr progressHandler:progressHandler completionHandler:completionHandler];
-    [downloadTask setValue:@(priority) forKeyPath:@"taskPriority"];
+    downloadTask.taskPriority = priority;
     
     if (_excutingTasks.count < _maxConcurrentTaskCount) {
         [_excutingTasks addObject:downloadTask];

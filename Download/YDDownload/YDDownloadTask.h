@@ -57,7 +57,7 @@ typedef NS_ENUM(NSUInteger, YDDownloadPriority) {
 /**
  下载任务优先级,默认为YDDownloadPriorityDefault
  */
-@property (nonatomic, assign, readonly) YDDownloadPriority taskPriority;
+@property (nonatomic, assign) YDDownloadPriority taskPriority;
 
 /**
  下载链接
