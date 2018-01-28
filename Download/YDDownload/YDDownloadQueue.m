@@ -60,17 +60,22 @@
 #pragma mark - 公开方法
 
 //添加任务到队列中
-- (YDDownloadTask *)addDownloadTaskWithPriority:(YDDownloadPriority)priority url:(NSString *)urlStr progressHandler:(void (^)(CGFloat progress, CGFloat speed))progressHandler completionHandler:(void (^)(NSString *filePath, NSError *error))completionHandler
+- (void)addDownloadTask:(YDDownloadTask *)downloadTask
 {
-    YDDownloadTask *downloadTask = [YDDownloadTask downloadTaskWithUrl:urlStr progressHandler:progressHandler completionHandler:completionHandler];
-    downloadTask.taskPriority = priority;
-    
     if (_excutingTasks.count < _maxConcurrentTaskCount) {
         [_excutingTasks addObject:downloadTask];
         [downloadTask resumeTask];
     } else {
         [_waitingTasks addObject:downloadTask];
     }
+}
+
+//添加任务到队列中
+- (YDDownloadTask *)addDownloadTaskWithPriority:(YDDownloadPriority)priority url:(NSString *)urlStr progressHandler:(void (^)(CGFloat progress, CGFloat speed))progressHandler completionHandler:(void (^)(NSString *filePath, NSError *error))completionHandler
+{
+    YDDownloadTask *downloadTask = [YDDownloadTask downloadTaskWithUrl:urlStr progressHandler:progressHandler completionHandler:completionHandler];
+    downloadTask.taskPriority = priority;
+    [self addDownloadTask:downloadTask];
     return downloadTask;
 }
 

@@ -37,6 +37,15 @@
 + (instancetype)defaultQueue;
 
 
+
+/**
+ 添加下载任务到队列中
+
+ @param downloadTask 将要添加的下载任务
+ */
+- (void)addDownloadTask:(YDDownloadTask *)downloadTask;
+
+
 /**
  添加下载任务到队列中
 
