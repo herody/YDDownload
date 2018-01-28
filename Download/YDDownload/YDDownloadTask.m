@@ -34,12 +34,12 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
 {
     if (self = [super init]) {
         //创建文件夹
-        self.directoryPath = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) firstObject] stringByAppendingPathComponent:@"YDDownloads"];
-        if (![[NSFileManager defaultManager] fileExistsAtPath:self.directoryPath]) {
-            [[NSFileManager defaultManager] createDirectoryAtPath:self.directoryPath withIntermediateDirectories:YES attributes:nil error:nil];
+        _directoryPath = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) firstObject] stringByAppendingPathComponent:@"YDDownloads"];
+        if (![[NSFileManager defaultManager] fileExistsAtPath:_directoryPath]) {
+            [[NSFileManager defaultManager] createDirectoryAtPath:_directoryPath withIntermediateDirectories:YES attributes:nil error:nil];
         }
         //创建NSURLSession
-        self.session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration] delegate:self delegateQueue:[NSOperationQueue mainQueue]];
+        _session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration] delegate:self delegateQueue:[NSOperationQueue mainQueue]];
     }
     return self;
 }
@@ -53,18 +53,18 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
         self.completionHandler = completionHandler;
         
         //获取已下载文件信息
-        NSDictionary *taskInfo = [self getTaskInfoForUrl:self.downloadUrl];
+        NSDictionary *taskInfo = [self getTaskInfoForUrl:_downloadUrl];
         if (taskInfo) {
             _filePath = [self.directoryPath stringByAppendingPathComponent:taskInfo[@"fileName"]];
-            _receivedLength = [self getFileSizeAtPath:self.filePath];
+            _receivedLength = [self getFileSizeAtPath:_filePath];
             _expectedLength = [taskInfo[@"totalSize"] longLongValue];
         }
         
         //初始化参数
         _taskProgress = 0;
         _taskSpeed = 0;
-        self.accumulateLength = 0;
-        self.taskPriority = YDDownloadPriorityDefault;
+        _accumulateLength = 0;
+        _taskPriority = YDDownloadPriorityDefault;
         self.taskStatus = YDDownloadTaskStatusWaiting;
     }
     return self;
@@ -80,12 +80,12 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
 - (NSURLSessionDataTask *)dataTask
 {
     if (!_dataTask) {
-        NSURL *url = [NSURL URLWithString:self.downloadUrl];
+        NSURL *url = [NSURL URLWithString:_downloadUrl];
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-        NSString *range = [NSString stringWithFormat:@"bytes=%zd-", self.receivedLength];
+        NSString *range = [NSString stringWithFormat:@"bytes=%zd-", _receivedLength];
         [request setValue:range forHTTPHeaderField:@"Range"];
         
-        self.dataTask = [self.session dataTaskWithRequest:request];
+        _dataTask = [_session dataTaskWithRequest:request];
     }
     return _dataTask;
 }
@@ -113,7 +113,7 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
 //保存文件名与链接的关联
 - (void)saveTaskInfo:(NSDictionary *)taskInfo forUrl:(NSString *)url
 {
-    NSString *plistPath = [self.directoryPath stringByAppendingPathComponent:@"download.plist"];
+    NSString *plistPath = [_directoryPath stringByAppendingPathComponent:@"download.plist"];
     NSMutableDictionary *plistDic = [NSMutableDictionary dictionaryWithContentsOfFile:plistPath];
     if (!plistDic) {
         plistDic = [NSMutableDictionary dictionary];
@@ -125,7 +125,7 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
 //根据链接获取文件名
 - (NSDictionary *)getTaskInfoForUrl:(NSString *)url
 {
-    NSString *plistPath = [self.directoryPath stringByAppendingPathComponent:@"download.plist"];
+    NSString *plistPath = [_directoryPath stringByAppendingPathComponent:@"download.plist"];
     NSMutableDictionary *plistDic = [NSMutableDictionary dictionaryWithContentsOfFile:plistPath];
     return [plistDic objectForKey:url];
 }
@@ -133,7 +133,7 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
 //删除文件名与链接的关联
 - (void)deleteTaskInfoForUrl:(NSString *)url
 {
-    NSString *plistPath = [self.directoryPath stringByAppendingPathComponent:@"download.plist"];
+    NSString *plistPath = [_directoryPath stringByAppendingPathComponent:@"download.plist"];
     NSMutableDictionary *plistDic = [NSMutableDictionary dictionaryWithContentsOfFile:plistPath];
     [plistDic removeObjectForKey:url];
     [plistDic writeToFile:plistPath atomically:YES];
@@ -149,18 +149,18 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
     self.completionHandler = completionHandler;
     
     //获取已下载文件信息
-    NSDictionary *taskInfo = [self getTaskInfoForUrl:self.downloadUrl];
+    NSDictionary *taskInfo = [self getTaskInfoForUrl:_downloadUrl];
     if (taskInfo) {
-        _filePath = [self.directoryPath stringByAppendingPathComponent:taskInfo[@"fileName"]];
-        _receivedLength = [self getFileSizeAtPath:self.filePath];
+        _filePath = [_directoryPath stringByAppendingPathComponent:taskInfo[@"fileName"]];
+        _receivedLength = [self getFileSizeAtPath:_filePath];
         _expectedLength = [taskInfo[@"totalSize"] longLongValue];
     }
     
     //初始化参数
     _taskProgress = 0;
     _taskSpeed = 0;
-    self.accumulateLength = 0;
-    self.taskPriority = YDDownloadPriorityDefault;
+    _accumulateLength = 0;
+    _taskPriority = YDDownloadPriorityDefault;
     self.taskStatus = YDDownloadTaskStatusWaiting;
 
     //开启下载任务
@@ -187,8 +187,8 @@ NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDid
     self.dataTask = nil;
     
     //删除已下载文件及文件关联信息
-    [[NSFileManager defaultManager] removeItemAtPath:self.filePath error:nil];
-    [self deleteTaskInfoForUrl:self.downloadUrl];
+    [[NSFileManager defaultManager] removeItemAtPath:_filePath error:nil];
+    [self deleteTaskInfoForUrl:_downloadUrl];
     
     //更改任务状态
     self.taskStatus = YDDownloadTaskStatusCanceled;
@@ -214,19 +214,19 @@ didReceiveResponse:(NSURLResponse *)response
 {
     //创建文件
     _filePath = [self.directoryPath stringByAppendingPathComponent:response.suggestedFilename];
-    if (![[NSFileManager defaultManager] fileExistsAtPath:self.filePath]) {
-        [[NSFileManager defaultManager] createFileAtPath:self.filePath contents:nil attributes:nil];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:_filePath]) {
+        [[NSFileManager defaultManager] createFileAtPath:_filePath contents:nil attributes:nil];
         NSDictionary *taskInfo = @{@"fileName":response.suggestedFilename, @"totalSize":@(response.expectedContentLength)};
-        [self saveTaskInfo:taskInfo forUrl:self.downloadUrl];
+        [self saveTaskInfo:taskInfo forUrl:_downloadUrl];
     }
     
     //参数赋初值
-    self.lastDate = [NSDate date];
+    _lastDate = [NSDate date];
     _expectedLength = response.expectedContentLength + self.receivedLength;
     
     //文件句柄指向指定路径
-    self.fileHandle = [NSFileHandle fileHandleForWritingAtPath:self.filePath];
-    [self.fileHandle seekToEndOfFile];
+    _fileHandle = [NSFileHandle fileHandleForWritingAtPath:_filePath];
+    [_fileHandle seekToEndOfFile];
     
     completionHandler(NSURLSessionResponseAllow);
 }
@@ -235,23 +235,23 @@ didReceiveResponse:(NSURLResponse *)response
     didReceiveData:(NSData *)data
 {
     //写入数据
-    [self.fileHandle writeData:data];
+    [_fileHandle writeData:data];
     
     //计算下载进度
     _receivedLength += data.length;
-    _taskProgress = self.receivedLength * 1.0 / self.expectedLength;
+    _taskProgress = _receivedLength * 1.0 / _expectedLength;
     
     //计算下载速度
-    self.accumulateLength += data.length;
-    if ([[NSDate date] timeIntervalSinceDate:self.lastDate] >= 1) {
-        _taskSpeed = self.accumulateLength * 1.0;
-        self.lastDate = [NSDate date];
-        self.accumulateLength = 0;
+    _accumulateLength += data.length;
+    if ([[NSDate date] timeIntervalSinceDate:_lastDate] >= 1) {
+        _taskSpeed = _accumulateLength * 1.0;
+        _lastDate = [NSDate date];
+        _accumulateLength = 0;
     }
     
     //回调
     if (self.progressHandler) {
-        self.progressHandler(self.taskProgress, self.taskSpeed);
+        self.progressHandler(_taskProgress, _taskSpeed);
     }
 }
 
@@ -259,17 +259,17 @@ didReceiveResponse:(NSURLResponse *)response
 didCompleteWithError:(nullable NSError *)error
 {
     //关闭文件句柄
-    [self.fileHandle closeFile];
-    self.fileHandle = nil;
+    [_fileHandle closeFile];
+    _fileHandle = nil;
     
     //清空参数
     self.dataTask = nil;
     _taskSpeed = 0;
-    self.accumulateLength = 0;
+    _accumulateLength = 0;
     
     //删除文件名与下载链接的关联
-    if (!error && self.taskProgress >= 1.0) {
-        [self deleteTaskInfoForUrl:self.downloadUrl];
+    if (!error && _taskProgress >= 1.0) {
+        [self deleteTaskInfoForUrl:_downloadUrl];
     }
     
     //更改任务状态
@@ -283,7 +283,7 @@ didCompleteWithError:(nullable NSError *)error
 
     //回调
     if (self.completionHandler) {
-        self.completionHandler(self.filePath, error);
+        self.completionHandler(_filePath, error);
     }
 }
 

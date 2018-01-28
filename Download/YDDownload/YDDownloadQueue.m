@@ -22,7 +22,7 @@
         //参数初始化
         _excutingTasks = [NSMutableArray array];
         _waitingTasks = [NSMutableArray array];
-        self.maxConcurrentTaskCount = 1;
+        _maxConcurrentTaskCount = 1;
         //添加任务状态改变通知
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(downloadTaskDidChangeStatusNotification:) name:YDDownloadTaskDidChangeStatusNotification object:nil];
     }
@@ -63,13 +63,13 @@
 - (YDDownloadTask *)addDownloadTaskWithPriority:(YDDownloadPriority)priority url:(NSString *)urlStr progressHandler:(void (^)(CGFloat progress, CGFloat speed))progressHandler completionHandler:(void (^)(NSString *filePath, NSError *error))completionHandler
 {
     YDDownloadTask *downloadTask = [YDDownloadTask downloadTaskWithUrl:urlStr progressHandler:progressHandler completionHandler:completionHandler];
-    downloadTask.taskPriority = priority;
+    [downloadTask setValue:@(priority) forKeyPath:@"taskPriority"];
     
-    if (self.excutingTasks.count < self.maxConcurrentTaskCount) {
-        [self.excutingTasks addObject:downloadTask];
+    if (_excutingTasks.count < _maxConcurrentTaskCount) {
+        [_excutingTasks addObject:downloadTask];
         [downloadTask resumeTask];
     } else {
-        [self.waitingTasks addObject:downloadTask];
+        [_waitingTasks addObject:downloadTask];
     }
     return downloadTask;
 }
@@ -78,53 +78,53 @@
 - (void)removeDownloadTask:(YDDownloadTask *)downloadTask
 {
     [downloadTask cancelTask];
-    [self.excutingTasks removeObject:downloadTask];
-    [self.waitingTasks removeObject:downloadTask];
+    [_excutingTasks removeObject:downloadTask];
+    [_waitingTasks removeObject:downloadTask];
 }
 
 //暂停全部任务
 - (void)suspendAllTasks
 {
     //暂停全部任务
-    NSInteger taskNum = self.excutingTasks.count;
-    for (YDDownloadTask *task in [self.waitingTasks copy]) {
+    NSInteger taskNum = _excutingTasks.count;
+    for (YDDownloadTask *task in [_waitingTasks copy]) {
         [task suspendTask];
     }
-    for (YDDownloadTask *task in [self.excutingTasks copy]) {
+    for (YDDownloadTask *task in [_excutingTasks copy]) {
         [task suspendTask];
     }
     
     //将下载中的任务移至等待中队列顶部
-    NSIndexSet *taskIndexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(self.waitingTasks.count - taskNum, taskNum)];
-    NSArray *tasks = [self.waitingTasks objectsAtIndexes:taskIndexes];
-    [self.waitingTasks removeObjectsAtIndexes:taskIndexes];
+    NSIndexSet *taskIndexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(_waitingTasks.count - taskNum, taskNum)];
+    NSArray *tasks = [_waitingTasks objectsAtIndexes:taskIndexes];
+    [_waitingTasks removeObjectsAtIndexes:taskIndexes];
     NSIndexSet *insertIndexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, taskNum)];
-    [self.waitingTasks insertObjects:tasks atIndexes:insertIndexes];
+    [_waitingTasks insertObjects:tasks atIndexes:insertIndexes];
 }
 
 //移除全部任务
 - (void)removeAllTasks
 {
     //取消全部任务
-    for (YDDownloadTask *task in [self.waitingTasks copy]) {
+    for (YDDownloadTask *task in [_waitingTasks copy]) {
         [task cancelTask];
     }
-    for (YDDownloadTask *task in [self.excutingTasks copy]) {
+    for (YDDownloadTask *task in [_excutingTasks copy]) {
         [task cancelTask];
     }
     
     //清空队列
-    [self.waitingTasks removeAllObjects];
-    [self.excutingTasks removeAllObjects];
+    [_waitingTasks removeAllObjects];
+    [_excutingTasks removeAllObjects];
 }
 
 //开启/恢复全部任务
 - (void)resumeAllTasks
 {
-    for (YDDownloadTask *task in [self.excutingTasks copy]) {
+    for (YDDownloadTask *task in [_excutingTasks copy]) {
         [task resumeTask];
     }
-    for (YDDownloadTask *task in [self.waitingTasks copy]) {
+    for (YDDownloadTask *task in [_waitingTasks copy]) {
         [task resumeTask];
     }
 }
@@ -138,36 +138,36 @@
     if (downloadTask.taskStatus == YDDownloadTaskStatusSuspended || downloadTask.taskStatus == YDDownloadTaskStatusCanceled || downloadTask.taskStatus == YDDownloadTaskStatusCompleted || downloadTask.taskStatus == YDDownloadTaskStatusFailed) {
         //将已完成任务从下载中队列移除
         if (downloadTask.taskStatus == YDDownloadTaskStatusCompleted) {
-            [self.excutingTasks removeObject:downloadTask];
+            [_excutingTasks removeObject:downloadTask];
         }
         //将任务从下载中队列转移到等待中队列
         if (downloadTask.taskStatus == YDDownloadTaskStatusSuspended || downloadTask.taskStatus == YDDownloadTaskStatusCanceled || downloadTask.taskStatus == YDDownloadTaskStatusFailed) {
-            if ([self.excutingTasks containsObject:downloadTask]) {
-                [self.waitingTasks addObject:downloadTask];
-                [self.excutingTasks removeObject:downloadTask];
+            if ([_excutingTasks containsObject:downloadTask]) {
+                [_waitingTasks addObject:downloadTask];
+                [_excutingTasks removeObject:downloadTask];
             }
         }
         //从等待中队列取任务并转移到下载中队列
-        if (self.excutingTasks.count < self.maxConcurrentTaskCount && self.waitingTasks.count) {
+        if (_excutingTasks.count < _maxConcurrentTaskCount && _waitingTasks.count) {
             YDDownloadTask *highestTask = nil;
-            for (YDDownloadTask *task in [self.waitingTasks copy]) {
+            for (YDDownloadTask *task in [_waitingTasks copy]) {
                 if ((task.taskStatus == YDDownloadTaskStatusWaiting || task.taskStatus == YDDownloadTaskStatusFailed) && (highestTask == nil || task.taskPriority > highestTask.taskPriority)) {
                     highestTask = task;
                 }
             }
             if (highestTask) {
-                [self.excutingTasks addObject:highestTask];
-                [self.waitingTasks removeObject:highestTask];
+                [_excutingTasks addObject:highestTask];
+                [_waitingTasks removeObject:highestTask];
                 [highestTask resumeTask];
             }
         }
     }
     
-    if (downloadTask.taskStatus == YDDownloadTaskStatusRunning && [self.waitingTasks containsObject:downloadTask]) {
-        if (self.excutingTasks.count < self.maxConcurrentTaskCount) {
+    if (downloadTask.taskStatus == YDDownloadTaskStatusRunning && [_waitingTasks containsObject:downloadTask]) {
+        if (_excutingTasks.count < _maxConcurrentTaskCount) {
             //将任务从等待中队列转移到下载中队列
-            [self.excutingTasks addObject:downloadTask];
-            [self.waitingTasks removeObject:downloadTask];
+            [_excutingTasks addObject:downloadTask];
+            [_waitingTasks removeObject:downloadTask];
         } else {
             //状态改变为等待中
             [downloadTask setValue:@(YDDownloadTaskStatusWaiting) forKeyPath:@"taskStatus"];
