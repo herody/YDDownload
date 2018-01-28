@@ -7,7 +7,6 @@
 //
 
 #import "YDDownloadTask.h"
-#import "YDDownloadQueue.h"
 
 NSString * const YDDownloadTaskDidChangeStatusNotification = @"YDDownloadTaskDidChangeStatusNotification";
 
